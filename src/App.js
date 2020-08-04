@@ -3,8 +3,11 @@ import axios from "axios";
 import moment from "moment";
 import Dropzone from "react-dropzone";
 import { gql, graphql, useMutation } from "@apollo/client";
+import {Editor, EditorState} from 'draft-js';
 function App(props) {
-  const [name, setName] = useState(undefined);
+  const [title, setTitle] = useState("");
+  const [cuerpo, setCuerpo] = useState("");
+  const [categoria, setCategoria] = useState("");
   const [file, setFile] = useState(undefined);
 
   const s3SignMutation = gql`
@@ -15,28 +18,46 @@ function App(props) {
       }
     }
   `;
+  const nuevaEntradaMutation = gql`
+    mutation nuevaEntrada($input: EntradaInput) {
+      nuevaEntrada(input: $input) {
+        id
+        titulo
+        imagen
+        cuerpo
+        categoria
+      }
+    }
+  `;
   const [signS3] = useMutation(s3SignMutation);
+  const [nuevaEntrada] = useMutation(nuevaEntradaMutation);
   async function onDrop(files) {
     setFile(files[0]);
   }
 
   function onChange(e) {
-    setName(e.target.value);
+    console.log(e.target.name)
+    if(e.target.name==="title"){
+      setTitle(e.target.value);
+    }else if (e.target.name==="cuerpo"){
+      setCuerpo(e.target.value);
+    }else{
+      setCategoria(e.target.value);
+    }
   }
   async function uploadToS3(file, signedRequest) {
     const options = {
       headers: {
         "Content-Type": file.type,
-        "Access-Control-Allow-Origin":"*",
-        "Access-Control-Allow-Methods": "GET, POST, PATCH, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods":
+          "GET, POST, PATCH, PUT, DELETE, OPTIONS",
         "Access-Control-Allow-Headers": "Origin, Content-Type, X-Auth-Token",
-        'X-Requested-With': 'XMLHttpRequest',
-        "Access-Control-Allow-Credentials": true
+        "X-Requested-With": "XMLHttpRequest",
+        "Access-Control-Allow-Credentials": true,
       },
     };
-      await axios.put(signedRequest, file, options);
-    
-    
+    await axios.put(signedRequest, file, options);
   }
   function formatFilename(filename) {
     const date = moment().format("YYYYMMDD");
@@ -53,14 +74,25 @@ function App(props) {
           input: {
             key: "Empleados/",
             filename: formatFilename(file.name),
-            filetype: file.type
+            filetype: file.type,
           },
         },
       });
 
       const { signedRequest, url } = response.data.signS3;
-      console.log(url)
+      console.log(url);
       await uploadToS3(file, signedRequest);
+      const response2 = await nuevaEntrada({
+        variables: {
+          input: {
+            titulo:title,
+            cuerpo: cuerpo,
+            imagen: url,
+            categoria: categoria
+          }
+        },
+      });
+      console.log(response2.data.nuevaEntrada);
     } catch (e) {
       console.log(e);
     }
@@ -68,7 +100,9 @@ function App(props) {
 
   return (
     <div>
-      <input name="name" onChange={onChange} value={name} />
+      <input name="title" type="text" onChange={onChange} value={title} />
+      <input name="cuerpo"  type="text" onChange={onChange} value={cuerpo} />
+      <input name="categoria" type="text" onChange={onChange} value={categoria} />
       <Dropzone onDrop={onDrop}>
         {({ getRootProps, getInputProps }) => (
           <section>
