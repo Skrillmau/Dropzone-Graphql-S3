@@ -3,12 +3,19 @@ import axios from "axios";
 import moment from "moment";
 import Dropzone from "react-dropzone";
 import { gql, graphql, useMutation } from "@apollo/client";
-import {Editor, EditorState} from 'draft-js';
+import { EditorState, convertToRaw } from "draft-js";
+import { Editor } from "react-draft-wysiwyg";
+import draftToMarkdown from "draftjs-to-markdown";
+import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
+import Markdown from "markdown-to-jsx";
+import "./index.css";
 function App(props) {
   const [title, setTitle] = useState("");
   const [cuerpo, setCuerpo] = useState("");
   const [categoria, setCategoria] = useState("");
   const [file, setFile] = useState(undefined);
+  const [editorState, setEditorStateChange] = useState(undefined);
+  const [url,setUrl] = useState("");
 
   const s3SignMutation = gql`
     mutation signS3($input: S3Signinput) {
@@ -36,12 +43,12 @@ function App(props) {
   }
 
   function onChange(e) {
-    console.log(e.target.name)
-    if(e.target.name==="title"){
+    console.log(e.target.name);
+    if (e.target.name === "title") {
       setTitle(e.target.value);
-    }else if (e.target.name==="cuerpo"){
+    } else if (e.target.name === "cuerpo") {
       setCuerpo(e.target.value);
-    }else{
+    } else {
       setCategoria(e.target.value);
     }
   }
@@ -67,7 +74,6 @@ function App(props) {
     return newFilename.substring(0, 1024);
   }
   async function submit() {
-    console.log(formatFilename(file.name));
     try {
       const response = await signS3({
         variables: {
@@ -82,17 +88,22 @@ function App(props) {
       const { signedRequest, url } = response.data.signS3;
       console.log(url);
       await uploadToS3(file, signedRequest);
+
       const response2 = await nuevaEntrada({
         variables: {
           input: {
-            titulo:title,
-            cuerpo: cuerpo,
+            titulo: title,
+            cuerpo: draftToMarkdown(
+              convertToRaw(editorState.getCurrentContent())
+            ),
             imagen: url,
-            categoria: categoria
-          }
+            categoria: categoria,
+          },
         },
       });
       console.log(response2.data.nuevaEntrada);
+      setCuerpo(response2.data.nuevaEntrada.cuerpo);
+      setUrl(url);
     } catch (e) {
       console.log(e);
     }
@@ -101,8 +112,22 @@ function App(props) {
   return (
     <div>
       <input name="title" type="text" onChange={onChange} value={title} />
-      <input name="cuerpo"  type="text" onChange={onChange} value={cuerpo} />
-      <input name="categoria" type="text" onChange={onChange} value={categoria} />
+      <input
+        name="categoria"
+        type="text"
+        onChange={onChange}
+        value={categoria}
+      />
+      <Editor
+        editorState={editorState}
+        toolbarClassName="toolbarClassName"
+        wrapperClassName="wrapperClassName"
+        editorClassName="editorClassName"
+        onEditorStateChange={setEditorStateChange}
+        toolbar={{
+          options: ["inline","blockType", "list", "link", "history"],
+        }}
+      />
       <Dropzone onDrop={onDrop}>
         {({ getRootProps, getInputProps }) => (
           <section>
@@ -114,6 +139,8 @@ function App(props) {
         )}
       </Dropzone>
       <button onClick={submit}>Submit</button>
+      <Markdown className="chokolochupa">{cuerpo}</Markdown>
+      <img src={url}></img>
     </div>
   );
 }
