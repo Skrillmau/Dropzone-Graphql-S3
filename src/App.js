@@ -125,7 +125,10 @@ function App(props) {
         editorClassName="editorClassName"
         onEditorStateChange={setEditorStateChange}
         toolbar={{
-          options: ["inline","blockType", "list", "link", "history"],
+          options: ["inline","blockType", "list", "link","colorPicker", "history"],
+          colorPicker:{
+            colors: ['#2e2e2e','#142882','#e60000'],
+          }
         }}
       />
       <Dropzone onDrop={onDrop}>
