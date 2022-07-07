@@ -14,7 +14,7 @@
     "draftjs-to-markdown": "^0.6.0",
     "graphql": "^15.3.0",
     "markdown-to-jsx": "^6.11.4",
-    "moment": "2.27.0",
+    "moment": "2.29.4",
     "react": "^16.13.1",
     "react-apollo": "^3.1.5",
     "react-dom": "^16.13.1",
